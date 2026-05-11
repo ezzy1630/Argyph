@@ -7,6 +7,7 @@
 [![crates.io](https://img.shields.io/crates/v/argyph.svg)](https://crates.io/crates/argyph)
 [![npm](https://img.shields.io/npm/v/@argyph/server.svg)](https://www.npmjs.com/package/@argyph/server)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
+[![SafeSkill 93/100](https://img.shields.io/badge/SafeSkill-93%2F100_Verified%20Safe-brightgreen)](https://safeskill.dev/scan/ezzy1630-argyph)
 
 Argyph is a single MCP server that gives any AI coding agent fast, structured, and semantic context over a codebase. It runs entirely on your machine, indexes incrementally, and is ready in under a second on previously-indexed repos.
 
