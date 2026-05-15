@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - id: plan
-        uses: axodotdev/cargo-dist@v0.28.0
+        uses: axodotdev/cargo-dist@v0.31.0
         with:
           cmd: plan
 
@@ -36,7 +36,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu
-      - uses: axodotdev/cargo-dist@v0.28.0
+      - uses: axodotdev/cargo-dist@v0.31.0
         with:
           cmd: build
 
@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: axodotdev/cargo-dist@v0.28.0
+      - uses: axodotdev/cargo-dist@v0.31.0
         with:
           cmd: publish
 
