@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use argyph_core::{SearchFilter, Supervisor};
 
 use crate::error::{self, McpErrorBody};
+use crate::handles::HandleStore;
+use crate::span::{self, Span, SpanKind};
 use crate::types::Filter;
 use crate::validate;
 
@@ -43,32 +45,64 @@ pub struct Response {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hits: Option<Vec<SearchHit>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub spans: Option<Vec<Span>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub truncated: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<McpErrorBody>,
 }
 
 impl Response {
-    fn ok(result: argyph_core::SearchResult, root: &Utf8PathBuf) -> Self {
+    fn ok(result: argyph_core::SearchResult, root: &Utf8PathBuf, handles: &HandleStore) -> Self {
+        let mut any_span_truncated = false;
+        let hits: Vec<SearchHit> = result
+            .hits
+            .into_iter()
+            .map(|h| {
+                let (ctx_before, ctx_after) = read_context(root, &h.file, h.line);
+                SearchHit {
+                    file: h.file.to_string(),
+                    line: h.line,
+                    column: h.column,
+                    match_text: h.match_text,
+                    context_before: ctx_before,
+                    context_after: ctx_after,
+                }
+            })
+            .collect();
+        let mut spans: Vec<Span> = hits
+            .iter()
+            .map(|h| {
+                let (text, byte_range) = span::read_line_range(
+                    root.as_std_path(),
+                    &h.file,
+                    h.line as u32,
+                    h.line as u32,
+                );
+                let mut span = Span {
+                    file: h.file.clone(),
+                    start_line: h.line as u32,
+                    end_line: h.line as u32,
+                    byte_range,
+                    text,
+                    kind: SpanKind::Match,
+                    symbol: None,
+                    language: None,
+                    score: None,
+                    truncated: false,
+                    expand_handle: None,
+                };
+                span::apply_span_cap(&mut span, handles);
+                any_span_truncated |= span.truncated;
+                span
+            })
+            .collect();
+        let (kept, total_truncated) = span::cap_total_lines(spans, span::max_total_lines());
+        spans = kept;
         Self {
-            hits: Some(
-                result
-                    .hits
-                    .into_iter()
-                    .map(|h| {
-                        let (ctx_before, ctx_after) = read_context(root, &h.file, h.line);
-                        SearchHit {
-                            file: h.file.to_string(),
-                            line: h.line,
-                            column: h.column,
-                            match_text: h.match_text,
-                            context_before: ctx_before,
-                            context_after: ctx_after,
-                        }
-                    })
-                    .collect(),
-            ),
-            truncated: Some(result.truncated),
+            hits: Some(hits),
+            spans: Some(spans),
+            truncated: Some(result.truncated || any_span_truncated || total_truncated),
             error: None,
         }
     }
@@ -76,6 +110,7 @@ impl Response {
     fn err(body: McpErrorBody) -> Self {
         Self {
             hits: None,
+            spans: None,
             truncated: None,
             error: Some(body),
         }
@@ -84,6 +119,7 @@ impl Response {
 
 pub async fn handle(
     supervisor: &Arc<Supervisor>,
+    handles: &Arc<HandleStore>,
     root: &Utf8PathBuf,
     request: Request,
 ) -> Response {
@@ -109,7 +145,7 @@ pub async fn handle(
         )
         .await
     {
-        Ok(result) => Response::ok(result, root),
+        Ok(result) => Response::ok(result, root, handles),
         Err(e) => Response::err(error::internal(e.to_string())),
     }
 }

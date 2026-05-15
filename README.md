@@ -18,6 +18,7 @@ The name is a portmanteau of **Argus** (the hundred-eyed watcher of Greek myth) 
 
 Argyph replaces the half-dozen MCP servers most developers stitch together (one for grep, one for embeddings, one for symbol search, one for repo packing) with a single tool. It exposes three pillars of context behind one MCP endpoint:
 
+0. **Ask-first retrieval** — `ask` is the primary agent-facing lookup tool. It routes bare identifiers to symbol search, structured locators to `locate`, and natural-language questions to hybrid search, returning bounded `Span` results instead of whole files.
 1. **File and symbol intelligence** — a tree-sitter-driven symbol graph with `find_definition`, `find_references`, callers, callees, imports, and outline tools. Structural queries return in milliseconds.
 2. **Semantic search** — hybrid (BM25 + vector) search over AST-aware chunks, backed by an embedded LanceDB store. Bundled local embedding model means no API key is required for full functionality.
 3. **Repo packing** — token-budgeted, repomix-style flattening of a repo or subset for agents that need to absorb a codebase quickly.
@@ -96,6 +97,7 @@ Download `argyph.dxt` from the [latest release](https://github.com/Ezzy1630/argy
 ```bash
 # In any repo
 cd ~/code/your-repo
+argyph init
 claude mcp add argyph -- npx @argyph/server@latest
 claude
 ```
@@ -129,6 +131,7 @@ After the first index, the on-disk `.argyph/` directory persists and only change
 
 | Tool                  | Description                                              | Tier required |
 |-----------------------|----------------------------------------------------------|---------------|
+| `ask`                 | Primary lookup router returning bounded spans            | 0/1/1.5/2     |
 | `get_index_status`    | Tier readiness, embedding progress, watcher state        | 0             |
 | `get_repo_overview`   | Languages, entry points, README excerpt, tree            | 0             |
 | `search_text`         | Ripgrep-style regex / literal search                     | 0             |
@@ -140,14 +143,13 @@ After the first index, the on-disk `.argyph/` directory persists and only change
 | `get_symbol_outline`  | Hierarchical outline of a file                           | 1             |
 | `search_semantic`     | Hybrid BM25 + vector over AST-aware chunks               | 2             |
 | `pack_repo`           | Token-budgeted repo flattening (XML or markdown)         | 0+1           |
-| `read_file_range`     | Bounded file read by symbol range                        | 0             |
 | `locate`              | Smallest natural span containing the target              | 1.5           |
 | `locate_smart`        | Retrieval subagent (opt-in; needs provider config)     | 1.5           |
+| `expand_span`         | Expand one truncated span from a session handle          | 0             |
 | `memory_save`         | Persist a memory entry under a scope                     | 0             |
 | `memory_search`       | FTS5 search over persistent memories                     | 0             |
 | `memory_list`         | List memories in a scope                                 | 0             |
 | `memory_forget`       | Delete a memory entry by id                              | 0             |
-| `reindex`             | Force a full or partial reindex                          | —             |
 
 Full schema reference: [docs/tools-reference.md](docs/tools-reference.md).
 
@@ -196,7 +198,7 @@ OPENAI_API_KEY=...                  # standard provider env vars
 ARGYPH_DISABLE_WATCHER=true         # for sandboxed environments
 ```
 
-Generate a starter config:
+Install agent lookup instructions in `CLAUDE.md`, `AGENTS.md`, or `GEMINI.md`:
 
 ```bash
 argyph init

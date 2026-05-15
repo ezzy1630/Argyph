@@ -59,6 +59,8 @@ pub struct SemanticHit {
     pub chunk_id: String,
     pub chunk_text: String,
     pub file: String,
+    pub byte_range: (u32, u32),
+    pub line_range: (u32, u32),
     pub score: f32,
     pub source: String,
 }
@@ -195,6 +197,8 @@ impl Index {
                     chunk_id: h.chunk_id,
                     chunk_text: h.chunk_text,
                     file: h.file,
+                    byte_range: h.byte_range,
+                    line_range: h.line_range,
                     score: h.score,
                     source: format!("{:?}", h.source).to_lowercase(),
                 })

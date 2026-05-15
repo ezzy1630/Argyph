@@ -1,4 +1,6 @@
+pub mod ask;
 mod common;
+pub mod expand_span;
 pub mod find_definition;
 pub mod find_references;
 pub mod get_callees;

@@ -8,6 +8,15 @@ Detailed milestone definitions are in [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md)
 
 ---
 
+## Shipped — `v1.1`
+
+- [x] **Context Discipline** — `ask` meta-tool, universal bounded `Span`
+      responses, `expand_span`, MCP Prompts, agent-oriented tool
+      descriptions, heuristic hybrid reranking, and `argyph init` agent
+      instruction installer.
+
+---
+
 ## Shipped — `v1.0.0-rc.1`
 
 - [x] **Phase 0** — Skeleton: workspace, CI, binary entry point.
@@ -49,7 +58,6 @@ hardware and benchmarks are published in
 - Gemini and Ollama embedding providers (separate atomic PRs).
 - Additional language packs: Go, Java, Kotlin.
 - MCP Resources: `argyph://overview`, `argyph://status`, `argyph://config`.
-- MCP Prompts: `explore_codebase`, `trace_symbol`, `prepare_review`.
 - JSON pack format (only if requested).
 - HTML/PDF extractors as additional Tier 1.5 parsers.
 - `pack_diff` tool for code-review workflows.

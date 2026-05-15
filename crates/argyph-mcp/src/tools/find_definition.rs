@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use argyph_core::Supervisor;
 
 use crate::error::{self, McpErrorBody};
+use crate::handles::HandleStore;
+use crate::span::{self, Span, SpanKind};
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct Request {
@@ -43,13 +45,19 @@ pub struct Response {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub definitions: Option<Vec<Definition>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub spans: Option<Vec<Span>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub truncated: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<McpErrorBody>,
 }
 
 impl Response {
-    fn ok(defs: Vec<Definition>) -> Self {
+    fn ok(defs: Vec<Definition>, spans: Vec<Span>, truncated: bool) -> Self {
         Self {
             definitions: Some(defs),
+            spans: Some(spans),
+            truncated: Some(truncated),
             error: None,
         }
     }
@@ -57,6 +65,8 @@ impl Response {
     fn err(body: McpErrorBody) -> Self {
         Self {
             definitions: None,
+            spans: None,
+            truncated: None,
             error: Some(body),
         }
     }
@@ -64,7 +74,8 @@ impl Response {
 
 pub async fn handle(
     supervisor: &Arc<Supervisor>,
-    _root: &Utf8PathBuf,
+    handles: &Arc<HandleStore>,
+    root: &Utf8PathBuf,
     request: Request,
 ) -> Response {
     if supervisor.get_tier_state().await.tier_number() < 2 {
@@ -93,8 +104,38 @@ pub async fn handle(
                         docstring: None,
                     }
                 })
+                .collect::<Vec<_>>();
+            let mut any_span_truncated = false;
+            let spans = defs
+                .iter()
+                .map(|d| {
+                    let (start, end) = span::byte_range_to_lines(
+                        root.as_std_path(),
+                        &d.location.file,
+                        d.location.range,
+                    );
+                    let (text, byte_range) =
+                        span::read_line_range(root.as_std_path(), &d.location.file, start, end);
+                    let mut span = Span {
+                        file: d.location.file.clone(),
+                        start_line: start,
+                        end_line: end,
+                        byte_range,
+                        text,
+                        kind: SpanKind::Definition,
+                        symbol: Some(d.name.clone()),
+                        language: d.language.clone(),
+                        score: None,
+                        truncated: false,
+                        expand_handle: None,
+                    };
+                    span::apply_span_cap(&mut span, handles);
+                    any_span_truncated |= span.truncated;
+                    span
+                })
                 .collect();
-            Response::ok(defs)
+            let (spans, total_truncated) = span::cap_total_lines(spans, span::max_total_lines());
+            Response::ok(defs, spans, any_span_truncated || total_truncated)
         }
         Err(e) => Response::err(error::internal(e.to_string())),
     }

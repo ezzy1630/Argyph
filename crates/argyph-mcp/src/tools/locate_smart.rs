@@ -7,6 +7,8 @@ use argyph_core::Supervisor;
 use argyph_locate::smart::{SmartError, SmartRequest, SubToolCtx};
 
 use crate::error::{ErrorCode, McpErrorBody};
+use crate::handles::HandleStore;
+use crate::span::Span;
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
 pub struct LocateSmartRequest {
@@ -29,6 +31,10 @@ pub struct LocateSmartResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub spans: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub spans_v2: Option<Vec<Span>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub truncated: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub strategy_used: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reasoning_summary: Option<String>,
@@ -42,6 +48,7 @@ pub struct LocateSmartResponse {
 
 pub async fn handle(
     supervisor: &Arc<Supervisor>,
+    handles: &Arc<HandleStore>,
     _root: &camino::Utf8PathBuf,
     req: LocateSmartRequest,
 ) -> LocateSmartResponse {
@@ -49,6 +56,8 @@ pub async fn handle(
     if !cfg.enabled {
         return LocateSmartResponse {
             spans: None,
+            spans_v2: None,
+            truncated: None,
             strategy_used: None,
             reasoning_summary: None,
             steps_taken: None,
@@ -66,6 +75,8 @@ pub async fn handle(
     let Some(provider) = cfg.provider.as_deref() else {
         return LocateSmartResponse {
             spans: None,
+            spans_v2: None,
+            truncated: None,
             strategy_used: None,
             reasoning_summary: None,
             steps_taken: None,
@@ -83,6 +94,8 @@ pub async fn handle(
     let Some(model_id) = cfg.model.as_deref() else {
         return LocateSmartResponse {
             spans: None,
+            spans_v2: None,
+            truncated: None,
             strategy_used: None,
             reasoning_summary: None,
             steps_taken: None,
@@ -102,6 +115,8 @@ pub async fn handle(
         Err(e) => {
             return LocateSmartResponse {
                 spans: None,
+                spans_v2: None,
+                truncated: None,
                 strategy_used: None,
                 reasoning_summary: None,
                 steps_taken: None,
@@ -121,6 +136,8 @@ pub async fn handle(
     let Some(embedder) = supervisor.embedder() else {
         return LocateSmartResponse {
             spans: None,
+            spans_v2: None,
+            truncated: None,
             strategy_used: None,
             reasoning_summary: None,
             steps_taken: None,
@@ -150,12 +167,15 @@ pub async fn handle(
     match argyph_locate::smart::run(model, ctx, smart_req).await {
         Ok(resp) => {
             let spans_json = serde_json::to_value(&resp.spans).unwrap_or(serde_json::json!([]));
+            let (spans_json, spans_v2, truncated) = cap_smart_spans(spans_json, handles);
             let coverage_json = serde_json::json!({
                 "tier_1_5": resp.index_coverage.tier_1_5,
                 "tier_2": resp.index_coverage.tier_2,
             });
             LocateSmartResponse {
                 spans: Some(spans_json),
+                spans_v2: Some(spans_v2),
+                truncated: Some(truncated),
                 strategy_used: Some(resp.strategy_used.to_string()),
                 reasoning_summary: Some(resp.reasoning_summary),
                 steps_taken: Some(resp.steps_taken),
@@ -180,8 +200,16 @@ pub async fn handle(
                 ),
                 None => (None, None, None),
             };
+            let (spans, spans_v2, truncated) = spans
+                .map(|value| {
+                    let (json, v2, truncated) = cap_smart_spans(value, handles);
+                    (Some(json), Some(v2), Some(truncated))
+                })
+                .unwrap_or((None, None, None));
             LocateSmartResponse {
                 spans,
+                spans_v2,
+                truncated,
                 strategy_used: Some("smart".into()),
                 reasoning_summary: summary,
                 steps_taken: Some(steps_taken),
@@ -197,6 +225,8 @@ pub async fn handle(
         }
         Err(SmartError::FabricatedNodeIds(ids)) => LocateSmartResponse {
             spans: None,
+            spans_v2: None,
+            truncated: None,
             strategy_used: None,
             reasoning_summary: None,
             steps_taken: None,
@@ -211,6 +241,8 @@ pub async fn handle(
         },
         Err(SmartError::ProviderError(e)) => LocateSmartResponse {
             spans: None,
+            spans_v2: None,
+            truncated: None,
             strategy_used: None,
             reasoning_summary: None,
             steps_taken: None,
@@ -225,6 +257,8 @@ pub async fn handle(
         },
         Err(SmartError::Other(e)) => LocateSmartResponse {
             spans: None,
+            spans_v2: None,
+            truncated: None,
             strategy_used: None,
             reasoning_summary: None,
             steps_taken: None,
@@ -238,4 +272,37 @@ pub async fn handle(
             }),
         },
     }
+}
+
+fn cap_smart_spans(
+    spans_json: serde_json::Value,
+    handles: &HandleStore,
+) -> (serde_json::Value, Vec<Span>, bool) {
+    let Ok(spans) = serde_json::from_value::<Vec<super::locate::SpanData>>(spans_json.clone())
+    else {
+        return (spans_json, Vec::new(), false);
+    };
+
+    let mut any_span_truncated = false;
+    let mut pairs: Vec<(super::locate::SpanData, Span)> = spans
+        .into_iter()
+        .map(|mut legacy| {
+            let span = super::ask::span_from_locate_span(legacy.clone(), handles);
+            legacy.content.clone_from(&span.text);
+            legacy.truncated = legacy.truncated || span.truncated;
+            any_span_truncated |= span.truncated;
+            (legacy, span)
+        })
+        .collect();
+    let spans_for_cap = pairs.iter().map(|(_, span)| span.clone()).collect();
+    let (spans_v2, total_truncated) =
+        crate::span::cap_total_lines(spans_for_cap, crate::span::max_total_lines());
+    pairs.truncate(spans_v2.len());
+    let legacy_spans: Vec<super::locate::SpanData> =
+        pairs.into_iter().map(|(legacy, _)| legacy).collect();
+    (
+        serde_json::to_value(legacy_spans).unwrap_or(serde_json::json!([])),
+        spans_v2,
+        any_span_truncated || total_truncated,
+    )
 }

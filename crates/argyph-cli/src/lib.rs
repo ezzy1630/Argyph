@@ -49,7 +49,7 @@ pub enum Command {
     },
     #[command(about = "Print environment diagnostics")]
     Doctor,
-    #[command(about = "Initialize an argyph.toml config file")]
+    #[command(about = "Install Argyph agent lookup instructions")]
     Init {
         #[arg(help = "Directory to initialize in (defaults to cwd)")]
         path: Option<String>,

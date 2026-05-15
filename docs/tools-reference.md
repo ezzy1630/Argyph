@@ -42,6 +42,85 @@ type Symbol = {
   location: SourceRange;
   language: string;
 };
+
+type Span = {
+  file: string;
+  start_line: number;          // 1-indexed inclusive
+  end_line: number;            // 1-indexed inclusive
+  byte_range: [number, number];
+  text: string;                // capped by ARGYPH_MAX_SPAN_LINES
+  kind: "definition" | "reference" | "match" | "outline" | "locate" | "call";
+  symbol?: string;
+  language?: string;
+  score?: number;
+  truncated: boolean;
+  expand_handle?: string;      // pass to expand_span within this MCP session
+};
+```
+
+Retrieval tools expose `Span` results additively beside their legacy fields.
+Default caps are 80 lines per span and 400 total lines per response.
+When a natural result exceeds the per-span cap, Argyph returns the first 40
+and last 20 lines with an elision marker and issues an `expand_handle`.
+
+---
+
+## ask
+
+Primary entry point for code, symbol, file, or content lookup. `ask` routes a
+bare identifier to symbol definition lookup, a locator-like query to `locate`,
+`mode=smart` to `locate_smart`, and natural-language queries to semantic
+search. It returns bounded spans and reports the strategy that actually served
+the response.
+
+Request:
+
+```json
+{
+  "query": "parseConfig",
+  "focus": { "file": "src/config.rs", "symbol": "load_config", "line": 42 },
+  "mode": "auto",
+  "limit": 8
+}
+```
+
+Response:
+
+```json
+{
+  "spans": [
+    {
+      "file": "src/config.rs",
+      "start_line": 10,
+      "end_line": 24,
+      "byte_range": [120, 480],
+      "text": "fn parse_config(...) { ... }",
+      "kind": "definition",
+      "symbol": "parse_config",
+      "language": "rust",
+      "truncated": false
+    }
+  ],
+  "strategy_used": "definition",
+  "truncated": false
+}
+```
+
+## expand_span
+
+Fetches the full text behind an `expand_handle` issued earlier in the same MCP
+session. Handles are in-memory and expire after 10 minutes.
+
+Request:
+
+```json
+{ "handle": "eh_..." }
+```
+
+Response:
+
+```json
+{ "span": { "...": "full span text, not elided" } }
 ```
 
 ### Errors
@@ -111,32 +190,6 @@ Reports the readiness of all index tiers and recent watcher activity. Cheap; saf
 ```
 
 **Errors:** none expected.
-
----
-
-### `reindex`
-
-Force a full or partial reindex. Returns immediately; progress is observable via `get_index_status`.
-
-**Tier required:** none.
-
-**Request:**
-
-```json
-{
-  "tier": "all",
-  "scope": { "paths": ["src/auth/"] }
-}
-```
-
-- `tier`: `"all" | "symbols" | "embeddings"`. Default `"all"`.
-- `scope`: `"all" | { "paths": string[] }`. Default `"all"`.
-
-**Response:**
-
-```json
-{ "queued": true, "estimated_files": 142 }
-```
 
 ---
 
@@ -254,16 +307,31 @@ Hybrid (BM25 + vector) search over AST-aware chunks. Returns whatever is current
 {
   "hits": [
     {
+      "chunk_id": "src/auth/session.rs:38:52",
+      "chunk_text": "pub struct SessionConfig { ttl: Duration, ... }",
       "file": "src/auth/session.rs",
-      "range": [38, 52],
+      "byte_range": [840, 1210],
+      "line_range": [38, 52],
       "score": 0.87,
-      "snippet": "pub struct SessionConfig { ttl: Duration, ... }",
-      "symbol": "SessionConfig",
-      "symbol_kind": "struct"
+      "source": "hybrid"
     }
   ],
+  "spans": [
+    {
+      "file": "src/auth/session.rs",
+      "start_line": 38,
+      "end_line": 52,
+      "byte_range": [840, 1210],
+      "text": "pub struct SessionConfig { ttl: Duration, ... }",
+      "kind": "match",
+      "score": 0.87,
+      "truncated": false
+    }
+  ],
+  "truncated": false,
   "index_coverage": 1.0,
-  "total_chunks_considered": 18452
+  "total_embedded": 18452,
+  "total_chunks": 18452
 }
 ```
 
@@ -711,7 +779,7 @@ A small set of opinionated prompts that demonstrate the tools well. These ship w
 | `trace_symbol`      | "Trace this function from definition through callers and refs."   |
 | `prepare_review`    | "Pack relevant context for reviewing this PR diff."               |
 
-Each prompt internally chains the relevant tools so the agent doesn't have to.
+Each prompt gives the client a compact retrieval recipe built around `ask`; the client still invokes the tools.
 
 ---
 

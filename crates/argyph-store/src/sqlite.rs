@@ -656,6 +656,12 @@ impl Store for SqliteStore {
             });
         }
 
+        crate::rerank::rerank_hits(
+            &mut hits,
+            &crate::rerank::FocusContext::default(),
+            crate::rerank::Weights::default(),
+        );
+
         Ok(HybridSearchResult {
             hits,
             total_embedded,

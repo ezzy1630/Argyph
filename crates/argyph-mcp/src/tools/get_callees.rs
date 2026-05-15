@@ -9,6 +9,8 @@ use argyph_core::Supervisor;
 use argyph_graph::edge::Edge;
 
 use crate::error::{self, McpErrorBody};
+use crate::handles::HandleStore;
+use crate::span::{self, Span, SpanKind};
 use crate::tools::common;
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -49,19 +51,27 @@ pub struct Response {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub callees: Option<Vec<CalleeEntry>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub spans: Option<Vec<Span>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub truncated: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<McpErrorBody>,
 }
 
 impl Response {
-    fn ok(callees: Vec<CalleeEntry>) -> Self {
+    fn ok(callees: Vec<CalleeEntry>, spans: Vec<Span>, truncated: bool) -> Self {
         Self {
             callees: Some(callees),
+            spans: Some(spans),
+            truncated: Some(truncated),
             error: None,
         }
     }
     fn err(body: McpErrorBody) -> Self {
         Self {
             callees: None,
+            spans: None,
+            truncated: None,
             error: Some(body),
         }
     }
@@ -69,7 +79,8 @@ impl Response {
 
 pub async fn handle(
     supervisor: &Arc<Supervisor>,
-    _root: &Utf8PathBuf,
+    handles: &Arc<HandleStore>,
+    root: &Utf8PathBuf,
     request: Request,
 ) -> Response {
     if supervisor.get_tier_state().await.tier_number() < 2 {
@@ -84,9 +95,54 @@ pub async fn handle(
 
     let index = supervisor.index();
     match index.get_callees(&sel).await {
-        Ok(edges) => Response::ok(group_edges_by_to(&edges)),
+        Ok(edges) => {
+            let callees = group_edges_by_to(&edges);
+            let (spans, truncated) = callee_spans(&callees, root, handles);
+            Response::ok(callees, spans, truncated)
+        }
         Err(e) => Response::err(error::internal(e.to_string())),
     }
+}
+
+fn callee_spans(
+    callees: &[CalleeEntry],
+    root: &Utf8PathBuf,
+    handles: &HandleStore,
+) -> (Vec<Span>, bool) {
+    let mut any_span_truncated = false;
+    let spans = callees
+        .iter()
+        .flat_map(|entry| {
+            entry
+                .call_sites
+                .iter()
+                .map(|site| (&entry.callee.name, site))
+        })
+        .map(|(name, site)| {
+            let start = site.range.0 as u32;
+            let end = site.range.1 as u32;
+            let (text, byte_range) =
+                span::read_line_range(root.as_std_path(), &site.file, start, end);
+            let mut span = Span {
+                file: site.file.clone(),
+                start_line: start,
+                end_line: end,
+                byte_range,
+                text,
+                kind: SpanKind::Call,
+                symbol: Some(name.clone()),
+                language: None,
+                score: None,
+                truncated: false,
+                expand_handle: None,
+            };
+            span::apply_span_cap(&mut span, handles);
+            any_span_truncated |= span.truncated;
+            span
+        })
+        .collect();
+    let (spans, total_truncated) = span::cap_total_lines(spans, span::max_total_lines());
+    (spans, any_span_truncated || total_truncated)
 }
 
 fn group_edges_by_to(edges: &[Edge]) -> Vec<CalleeEntry> {

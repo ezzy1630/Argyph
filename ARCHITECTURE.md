@@ -50,6 +50,12 @@ The single most important design decision in Argyph. Each tier is independently 
 
 Sits above the three tiers. An in-process bounded ReAct loop that dispatches to the four read-only sub-tools (`locate`, `read_file_range`, `get_symbol_outline`, `get_repo_overview`). Off by default. When enabled, validates that every span returned to the caller came from a `locate` call made earlier in the same loop — so the model cannot fabricate byte ranges. Provider abstraction (`LocateModel` trait) supports OpenAI, Anthropic, and Ollama-compatible local endpoints.
 
+### Meta-tool layer — `ask` and `Span`
+
+`argyph-mcp` exposes `ask` as the default lookup entry point for agents. The router selects symbol definition lookup for bare identifiers, structural `locate` for path/glob/line-style locators, `locate_smart` when explicitly requested, and semantic search for natural-language questions.
+
+Retrieval tools now add a universal `Span` array beside legacy fields. Each span carries file, line range, byte range, text, kind, optional symbol/language/score metadata, and truncation state. The MCP boundary enforces `ARGYPH_MAX_SPAN_LINES` (default 80) and `ARGYPH_MAX_TOTAL_LINES` (default 400) so a single tool call cannot flood an agent's context; truncated spans receive a session-scoped `expand_handle` that `expand_span` can resolve within 10 minutes.
+
 ### Why this matters
 
 Most agent queries are structural — "where is `parseConfig` defined?", "what calls `validateUser`?", "show me imports of this file". Those are Tier 1 queries served in milliseconds. Embeddings are only needed for fuzzy semantic queries ("find code that handles auth"). Even on a large repo where Tier 2 takes 10 minutes, the server feels instant for ~70% of real queries.
@@ -278,7 +284,7 @@ argyph graph callers parseConfig   # Find callers of a symbol
 argyph pack --budget 30000 src/    # Pack a subset to stdout
 argyph serve                       # Run as MCP server (stdio)
 argyph doctor                      # Diagnose env, model files, perms
-argyph init                        # Generate .argyph/config.toml
+argyph init                        # Install agent lookup instructions
 ```
 
 The CLI gives users a way to debug what the agent sees and gives us a free integration testing surface.

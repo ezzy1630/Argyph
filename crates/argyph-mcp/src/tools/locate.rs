@@ -2,11 +2,13 @@ use std::sync::Arc;
 
 use camino::Utf8PathBuf;
 use schemars::JsonSchema;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use argyph_core::Supervisor;
 
 use crate::error::{ErrorCode, McpErrorBody};
+use crate::handles::HandleStore;
+use crate::span::Span;
 
 pub use argyph_locate::Request as LocateRequest;
 
@@ -15,6 +17,10 @@ pub struct LocateResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub spans: Option<Vec<SpanData>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub spans_v2: Option<Vec<Span>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub truncated: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub strategy_used: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub index_coverage: Option<IndexCoverageData>,
@@ -22,7 +28,7 @@ pub struct LocateResponse {
     pub error: Option<McpErrorBody>,
 }
 
-#[derive(Debug, Clone, Serialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct SpanData {
     pub node_id: String,
     pub file: String,
@@ -36,13 +42,13 @@ pub struct SpanData {
     pub expand_to: ExpandToData,
 }
 
-#[derive(Debug, Clone, Serialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ExpandToData {
     pub parent: Option<ExpandTargetData>,
     pub file: Option<ExpandTargetData>,
 }
 
-#[derive(Debug, Clone, Serialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ExpandTargetData {
     pub node_id: Option<String>,
     pub label: Option<String>,
@@ -57,6 +63,7 @@ pub struct IndexCoverageData {
 
 pub async fn handle(
     supervisor: &Arc<Supervisor>,
+    handles: &Arc<HandleStore>,
     root: &Utf8PathBuf,
     req: LocateRequest,
 ) -> LocateResponse {
@@ -65,6 +72,8 @@ pub async fn handle(
     let Some(embedder) = supervisor.embedder() else {
         return LocateResponse {
             spans: None,
+            spans_v2: None,
+            truncated: None,
             strategy_used: None,
             index_coverage: None,
             error: Some(McpErrorBody {
@@ -83,35 +92,53 @@ pub async fn handle(
                 .ok()
                 .and_then(|v| v.as_str().map(String::from))
                 .unwrap_or_else(|| format!("{:?}", resp.strategy_used).to_lowercase());
+            let spans: Vec<SpanData> = resp
+                .spans
+                .into_iter()
+                .map(|s| SpanData {
+                    node_id: s.node_id,
+                    file: s.file,
+                    byte_range: s.byte_range,
+                    line_range: s.line_range,
+                    kind: s.kind,
+                    path: s.path,
+                    content: s.content,
+                    score: s.score,
+                    truncated: s.truncated,
+                    expand_to: ExpandToData {
+                        parent: s.expand_to.parent.map(|p| ExpandTargetData {
+                            node_id: p.node_id,
+                            label: p.label,
+                            bytes: p.bytes,
+                        }),
+                        file: s.expand_to.file.map(|f| ExpandTargetData {
+                            node_id: f.node_id,
+                            label: f.label,
+                            bytes: f.bytes,
+                        }),
+                    },
+                })
+                .collect();
+            let mut any_span_truncated = false;
+            let mut pairs: Vec<(SpanData, Span)> = spans
+                .into_iter()
+                .map(|mut legacy| {
+                    let span = super::ask::span_from_locate_span(legacy.clone(), handles);
+                    legacy.content.clone_from(&span.text);
+                    legacy.truncated = legacy.truncated || span.truncated;
+                    any_span_truncated |= span.truncated;
+                    (legacy, span)
+                })
+                .collect();
+            let spans_for_cap = pairs.iter().map(|(_, span)| span.clone()).collect();
+            let (spans_v2, total_truncated) =
+                crate::span::cap_total_lines(spans_for_cap, crate::span::max_total_lines());
+            pairs.truncate(spans_v2.len());
+            let spans = pairs.into_iter().map(|(legacy, _)| legacy).collect();
             LocateResponse {
-                spans: Some(
-                    resp.spans
-                        .into_iter()
-                        .map(|s| SpanData {
-                            node_id: s.node_id,
-                            file: s.file,
-                            byte_range: s.byte_range,
-                            line_range: s.line_range,
-                            kind: s.kind,
-                            path: s.path,
-                            content: s.content,
-                            score: s.score,
-                            truncated: s.truncated,
-                            expand_to: ExpandToData {
-                                parent: s.expand_to.parent.map(|p| ExpandTargetData {
-                                    node_id: p.node_id,
-                                    label: p.label,
-                                    bytes: p.bytes,
-                                }),
-                                file: s.expand_to.file.map(|f| ExpandTargetData {
-                                    node_id: f.node_id,
-                                    label: f.label,
-                                    bytes: f.bytes,
-                                }),
-                            },
-                        })
-                        .collect(),
-                ),
+                spans: Some(spans),
+                spans_v2: Some(spans_v2),
+                truncated: Some(any_span_truncated || total_truncated),
                 strategy_used: Some(strategy_str),
                 index_coverage: Some(IndexCoverageData {
                     tier_1_5: resp.index_coverage.tier_1_5,
@@ -131,6 +158,8 @@ pub async fn handle(
             };
             LocateResponse {
                 spans: None,
+                spans_v2: None,
+                truncated: None,
                 strategy_used: None,
                 index_coverage: None,
                 error: Some(McpErrorBody {

@@ -8,6 +8,8 @@ use argyph_core::Supervisor;
 use argyph_parse::SymbolId;
 
 use crate::error::{self, McpErrorBody};
+use crate::handles::HandleStore;
+use crate::span::{self, Span, SpanKind};
 use crate::tools::common;
 
 #[derive(Debug, Clone, Deserialize, JsonSchema)]
@@ -49,15 +51,18 @@ pub struct Response {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub references: Option<Vec<Reference>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub spans: Option<Vec<Span>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub truncated: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<McpErrorBody>,
 }
 
 impl Response {
-    fn ok(refs: Vec<Reference>, truncated: bool) -> Self {
+    fn ok(refs: Vec<Reference>, spans: Vec<Span>, truncated: bool) -> Self {
         Self {
             references: Some(refs),
+            spans: Some(spans),
             truncated: Some(truncated),
             error: None,
         }
@@ -65,6 +70,7 @@ impl Response {
     fn err(body: McpErrorBody) -> Self {
         Self {
             references: None,
+            spans: None,
             truncated: None,
             error: Some(body),
         }
@@ -73,6 +79,7 @@ impl Response {
 
 pub async fn handle(
     supervisor: &Arc<Supervisor>,
+    handles: &Arc<HandleStore>,
     root: &Utf8PathBuf,
     request: Request,
 ) -> Response {
@@ -96,7 +103,38 @@ pub async fn handle(
                 .take(max as usize)
                 .map(|e| edge_to_reference(&e.from, root))
                 .collect();
-            Response::ok(refs, truncated)
+            let mut any_span_truncated = false;
+            let spans = refs
+                .iter()
+                .map(|r| {
+                    let start = r.range.0 as u32;
+                    let end = r.range.1 as u32;
+                    let (text, byte_range) =
+                        span::read_line_range(root.as_std_path(), &r.file, start, end);
+                    let mut span = Span {
+                        file: r.file.clone(),
+                        start_line: start,
+                        end_line: end,
+                        byte_range,
+                        text,
+                        kind: SpanKind::Reference,
+                        symbol: request.name.clone(),
+                        language: None,
+                        score: None,
+                        truncated: false,
+                        expand_handle: None,
+                    };
+                    span::apply_span_cap(&mut span, handles);
+                    any_span_truncated |= span.truncated;
+                    span
+                })
+                .collect();
+            let (spans, total_truncated) = span::cap_total_lines(spans, span::max_total_lines());
+            Response::ok(
+                refs,
+                spans,
+                truncated || any_span_truncated || total_truncated,
+            )
         }
         Err(e) => Response::err(error::internal(e.to_string())),
     }

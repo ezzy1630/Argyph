@@ -12,11 +12,24 @@ Entries marked **breaking** require a major version bump.
 
 ### Added
 
+- `ask` MCP meta-tool for code, symbol, file, and content lookup with
+  bounded `Span` responses.
+- `expand_span` MCP tool for resolving session-scoped handles when a span is
+  truncated.
+- MCP Prompts: `explore_codebase`, `trace_symbol`, and `prepare_review`.
+- `argyph init` agent instruction installer for `CLAUDE.md`, `AGENTS.md`, and
+  `GEMINI.md`.
+- Deterministic hybrid-search reranker with size penalty and module-focus
+  signal hooks.
 - Live (`-D warnings`) clippy gate on the snapshot tests for `argyph-pack`.
 - DXT manifest now ships a real 128x128 icon.
 
 ### Changed
 
+- Retrieval tools now expose additive universal `spans` fields and enforce
+  per-span and per-response line caps at the MCP boundary.
+- Tool descriptions now bias agents toward `ask` for ordinary code lookup and
+  discourage broad file reads.
 - Aligned all distribution channels (Cargo workspace, npm package, DXT
   manifest, Homebrew formula) on `1.0.0-rc.1`.
 - `npm/postinstall.js` now reads the version from `package.json`, downloads

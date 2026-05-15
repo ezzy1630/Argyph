@@ -2,6 +2,7 @@
 
 mod error;
 mod migration;
+pub mod rerank;
 pub mod schema;
 pub mod search;
 mod sqlite;
