@@ -12,6 +12,8 @@
     }
   },
   "toolDescriptions": {
+    "ask": "Primary lookup router — routes bare identifiers to symbol search, paths to locate, NL questions to semantic search. Returns bounded Span results.",
+    "expand_span": "Expand one truncated Span from a session handle returned by another tool.",
     "get_index_status": "Report the readiness of all index tiers (cheap, safe to poll)",
     "get_repo_overview": "Tier-0 summary: file tree, language mix, sizes",
     "search_text": "Pure regex/literal grep across the repo (Tier 0)",

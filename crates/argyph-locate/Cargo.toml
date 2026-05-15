@@ -5,6 +5,12 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
+description.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [lints]
 workspace = true
@@ -13,11 +19,11 @@ workspace = true
 smart = ["dep:reqwest", "dep:eventsource-stream"]
 
 [dependencies]
-argyph-store = { path = "../argyph-store" }
-argyph-fs = { path = "../argyph-fs" }
-argyph-parse = { path = "../argyph-parse" }
-argyph-embed = { path = "../argyph-embed" }
-argyph-graph = { path = "../argyph-graph" }
+argyph-store = { path = "../argyph-store", version = "=1.0.0-rc.1" }
+argyph-fs = { path = "../argyph-fs", version = "=1.0.0-rc.1" }
+argyph-parse = { path = "../argyph-parse", version = "=1.0.0-rc.1" }
+argyph-embed = { path = "../argyph-embed", version = "=1.0.0-rc.1" }
+argyph-graph = { path = "../argyph-graph", version = "=1.0.0-rc.1" }
 anyhow = "1"
 async-trait = "0.1"
 blake3 = "1"

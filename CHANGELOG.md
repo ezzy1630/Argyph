@@ -12,6 +12,17 @@ Entries marked **breaking** require a major version bump.
 
 ### Added
 
+- Workspace-level crate metadata (`description`, `homepage`,
+  `documentation`, `readme`, `keywords`, `categories`) inherited by
+  every crate so each entry on crates.io is self-describing.
+- Versioned path dependencies between workspace crates so every member
+  is independently publishable to crates.io.
+- `crates-io`, `npm`, and `homebrew` jobs in the release workflow:
+  tag-driven publish to crates.io (dependency-ordered), tag-driven
+  `npm publish` (RCs go to the `next` dist-tag), and automated SHA256
+  refresh of `Formula/argyph.rb`.
+- `benches/README.md` — operator guide for the criterion harness and
+  pointer to `docs/benchmarks.md` as the canonical results record.
 - `ask` MCP meta-tool for code, symbol, file, and content lookup with
   bounded `Span` responses.
 - `expand_span` MCP tool for resolving session-scoped handles when a span is
@@ -26,6 +37,20 @@ Entries marked **breaking** require a major version bump.
 
 ### Changed
 
+- CI: bumped `actions/checkout` to `v5` and pinned
+  `dtolnay/rust-toolchain` to `@stable` (the `@master` action now
+  requires an explicit `toolchain` input, which was breaking every
+  workflow run).
+- Documentation: `docs/` is no longer top-level-gitignored. Public docs
+  (`SPEC.md`, `BUILD_PLAN.md`, `MODULES.md`, `BUILD_GUIDE.md`,
+  `AGENT_WORKFLOW.md`, `COMMIT_CONVENTIONS.md`) are now tracked.
+  Agent-prompt subdirectories (`docs/agent-prompts/`,
+  `docs/superpowers/`) and the internal `plans/` / `specs/` directories
+  remain local-only.
+- Untracked the stray `.codegraph/` runtime directory and added it to
+  `.gitignore`.
+- README benchmark table now references real criterion numbers and
+  cross-links the methodology in `docs/benchmarks.md`.
 - Retrieval tools now expose additive universal `spans` fields and enforce
   per-span and per-response line caps at the MCP boundary.
 - Tool descriptions now bias agents toward `ask` for ordinary code lookup and

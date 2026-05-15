@@ -73,11 +73,17 @@ audit.jsonl
 outputs/
 uploads/
 .claude/
+.codegraph/
 
 # --- Miscellaneous ---
 *.tmp
 tmp/
 scratch/
 
-# --- Local-only documentation (kept on disk for reference, not pushed) ---
-/docs/
+# --- Agent-only docs (kept on disk for reference, not published) ---
+/docs/agent-prompts/
+/docs/superpowers/
+
+# --- Internal plans (kept on disk, not published) ---
+/plans/
+/specs/

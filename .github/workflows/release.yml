@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   plan:
@@ -13,7 +14,7 @@ jobs:
     outputs:
       manifest: ${{ steps.plan.outputs.manifest }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: plan
         uses: axodotdev/cargo-dist@v0.28.0
         with:
@@ -26,7 +27,7 @@ jobs:
         include: ${{ fromJson(needs.plan.outputs.manifest).targets }}
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -43,16 +44,63 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: axodotdev/cargo-dist@v0.28.0
         with:
           cmd: publish
+
+  crates-io:
+    name: Publish to crates.io
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: cargo publish (dependency order)
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          set -e
+          for crate in argyph-fs argyph-parse argyph-graph argyph-embed argyph-store argyph-pack argyph-memory argyph-locate argyph-core argyph-mcp argyph-cli argyph; do
+            echo "==> Publishing $crate"
+            cargo publish -p "$crate" --token "$CARGO_REGISTRY_TOKEN" || echo "    (already published or transient failure — continuing)"
+            sleep 30
+          done
+
+  npm:
+    name: Publish to npm
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org/'
+      - name: Sync version from tag
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          VERSION="${REF_NAME#v}"
+          cd npm
+          node -e "const fs=require('fs');const p=require('./package.json');p.version=process.env.VERSION;fs.writeFileSync('./package.json',JSON.stringify(p,null,2)+'\n')"
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          cd npm
+          if [[ "$REF_NAME" == *-* ]]; then
+            npm publish --access public --tag next
+          else
+            npm publish --access public
+          fi
 
   dxt:
     runs-on: ubuntu-latest
     needs: publish
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Package DXT
         run: |
           cd dxt
@@ -61,3 +109,28 @@ jobs:
         with:
           name: argyph-dxt
           path: argyph.dxt
+
+  homebrew:
+    name: Update Homebrew formula
+    needs: publish
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.ref_name, '-') }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Update SHAs in Formula/argyph.rb
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          chmod +x scripts/update-homebrew.sh
+          ./scripts/update-homebrew.sh "$REF_NAME"
+      - name: Commit formula
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          if ! git diff --quiet Formula/argyph.rb; then
+            git add Formula/argyph.rb
+            git commit -m "chore(homebrew): update SHAs for ${REF_NAME}"
+            git push origin HEAD:main
+          fi
