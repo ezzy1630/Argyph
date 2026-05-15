@@ -311,7 +311,25 @@ mod tests {
                 copy_dir_all(&src_path, &dst_path)?;
             } else if ty.is_symlink() {
                 let target = std::fs::read_link(&src_path)?;
-                std::os::unix::fs::symlink(&target, &dst_path)?;
+                #[cfg(unix)]
+                {
+                    std::os::unix::fs::symlink(&target, &dst_path)?;
+                }
+                #[cfg(windows)]
+                {
+                    // Windows symlinks need an admin token in CI; for the
+                    // test fixture, treat the symlink target as a regular
+                    // file copy. The fixture tree under examples/ does not
+                    // currently contain any symlinks, so this branch is
+                    // defensive rather than load-bearing.
+                    if target.is_dir() {
+                        std::os::windows::fs::symlink_dir(&target, &dst_path)
+                            .or_else(|_| std::fs::copy(&src_path, &dst_path).map(|_| ()))?;
+                    } else {
+                        std::os::windows::fs::symlink_file(&target, &dst_path)
+                            .or_else(|_| std::fs::copy(&src_path, &dst_path).map(|_| ()))?;
+                    }
+                }
             } else {
                 std::fs::copy(&src_path, &dst_path)?;
             }
