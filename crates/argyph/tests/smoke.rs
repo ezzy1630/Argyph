@@ -14,7 +14,15 @@ fn copy_dir_all(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result
             copy_dir_all(&src_path, &dst_path)?;
         } else if ty.is_symlink() {
             let target = std::fs::read_link(&src_path)?;
-            std::os::unix::fs::symlink(&target, &dst_path)?;
+            #[cfg(unix)]
+            {
+                std::os::unix::fs::symlink(&target, &dst_path)?;
+            }
+            #[cfg(windows)]
+            {
+                let _ = target;
+                std::fs::copy(&src_path, &dst_path)?;
+            }
         } else {
             std::fs::copy(&src_path, &dst_path)?;
         }
