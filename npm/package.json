@@ -10,8 +10,17 @@
   },
   "files": [
     "bin/",
-    "postinstall.js"
+    "postinstall.js",
+    "README.md"
   ],
+  "homepage": "https://github.com/Ezzy1630/argyph#readme",
+  "bugs": {
+    "url": "https://github.com/Ezzy1630/argyph/issues"
+  },
+  "author": "Ezzy1630",
+  "engines": {
+    "node": ">=18"
+  },
   "keywords": [
     "mcp", "mcp-server", "model-context-protocol",
     "code-search", "semantic-search", "ai-coding",

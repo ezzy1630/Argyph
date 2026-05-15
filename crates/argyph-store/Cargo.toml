@@ -5,15 +5,21 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
+description.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [lints]
 workspace = true
 
 [dependencies]
 thiserror.workspace = true
-argyph-fs = { path = "../argyph-fs" }
-argyph-parse = { path = "../argyph-parse" }
-argyph-graph = { path = "../argyph-graph" }
+argyph-fs = { path = "../argyph-fs", version = "=1.0.0-rc.1" }
+argyph-parse = { path = "../argyph-parse", version = "=1.0.0-rc.1" }
+argyph-graph = { path = "../argyph-graph", version = "=1.0.0-rc.1" }
 rusqlite = { version = "0.32", features = ["bundled"] }
 async-trait = "0.1"
 camino = "1"

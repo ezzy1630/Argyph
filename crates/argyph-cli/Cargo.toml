@@ -5,14 +5,20 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
+description.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [lints]
 workspace = true
 
 [dependencies]
-argyph-core = { path = "../argyph-core" }
-argyph-fs = { path = "../argyph-fs" }
-argyph-mcp = { path = "../argyph-mcp" }
+argyph-core = { path = "../argyph-core", version = "=1.0.0-rc.1" }
+argyph-fs = { path = "../argyph-fs", version = "=1.0.0-rc.1" }
+argyph-mcp = { path = "../argyph-mcp", version = "=1.0.0-rc.1" }
 thiserror.workspace = true
 clap = { version = "4", features = ["derive"] }
 camino = "1"

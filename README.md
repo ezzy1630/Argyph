@@ -112,6 +112,8 @@ Argyph indexes Tier 0 in under a second on first run, Tier 1 (symbol graph) in s
 
 ## How it works
 
+![Argyph three-tier indexing](docs/assets/three-tier-indexing.svg)
+
 Argyph builds the index in three tiers, each useful before the next completes:
 
 | Tier | What it builds                                | Time on a 1M-LOC repo | Useful for                                  |
@@ -220,28 +222,44 @@ argyph init
 
 ## Benchmarks
 
-Reproducible numbers, methodology in [`benches/README.md`](benches/README.md). Reported on M2 Max, macOS 14:
+Reproducible numbers, methodology in [`docs/benchmarks.md`](docs/benchmarks.md). Reproduce locally with `cargo bench --workspace`. Numbers below are the median of three runs on the reference hardware tagged `m3-pro` (Apple M3 Pro, 36 GB RAM, macOS 15) unless stated otherwise.
 
-| Workload                                | Argyph     | claude-context | repomix    |
-|-----------------------------------------|------------|----------------|------------|
-| Cold index, 1M LOC TS monorepo          | _TBD_      | _TBD_          | n/a        |
-| Warm start (already indexed)            | _<1 s_     | _TBD_          | n/a        |
-| Search latency (semantic), p50          | _<50 ms_   | _TBD_          | n/a        |
-| `find_definition`, p99                  | _<10 ms_   | n/a            | n/a        |
+### Hot paths (criterion, mean times)
 
-Numbers will be filled in as `benches/` is built out in Phase 2 of the build plan.
+| Bench                       | Mean      | What it measures                            |
+|-----------------------------|-----------|---------------------------------------------|
+| `locate_parse_path_bare`    | ~15 ns    | Parsing a bare path locator                  |
+| `locate_parse_path_heading` | ~18 ns    | Parsing `path > Heading` locators            |
+| `locate_strategy_path_only` | ~19 ns    | Strategy dispatch for path-only locator      |
+| `locate_strategy_scoped`    | ~32 ns    | Strategy dispatch for scoped query locator   |
+| `token_count_rust_file`     | ~4.4 µs   | `cl100k_base` tokenization of one source file |
+| `walk_project_root`         | ~244 ms   | Full `walkdir` traversal of this repo        |
+
+### System-level (manual; see [`docs/benchmarks.md`](docs/benchmarks.md) for the harness)
+
+| Workload                                                | Argyph     | Target  |
+|---------------------------------------------------------|-----------:|--------:|
+| Tier 0 cold index, 1M-LOC TS repo (`microsoft/vscode`)  | _to be filled_ | < 1 s   |
+| Warm start (already indexed)                            | _to be filled_ | < 1 s   |
+| `search_semantic` p50                                   | _to be filled_ | < 100 ms |
+| `find_definition` p99                                   | _to be filled_ | < 10 ms |
+
+System-level numbers are populated by the release-cut benchmark run on
+the reference hardware. Until v1.0.0 GA, the targets above are the
+acceptance gate from [`docs/SPEC.md`](docs/SPEC.md) § 6 — anything
+failing them will block the release.
 
 ---
 
 ## Architecture
 
-Argyph is a Rust workspace of nine focused crates with strict module ownership. The full architecture, including the Supervisor lifecycle, the three-tier indexing model, and per-crate responsibility boundaries, is documented in [ARCHITECTURE.md](ARCHITECTURE.md).
+Argyph is a Rust workspace of twelve focused crates with strict module ownership. The full architecture, including the Supervisor lifecycle, the three-tier indexing model, and per-crate responsibility boundaries, is documented in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
 ## Project status
 
-**Pre-1.0.** This is alpha software. APIs may change. The build plan and milestones are in [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md). Current milestone is tracked at the top of [ROADMAP.md](ROADMAP.md).
+**Release candidate.** `v1.0.0-rc.1` is published; `v1.0.0` will cut once the system-level benchmark targets in [`docs/SPEC.md`](docs/SPEC.md) § 6 are verified on the reference hardware. The build plan and milestones are in [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md); the current milestone is tracked at the top of [ROADMAP.md](ROADMAP.md).
 
 ---
 

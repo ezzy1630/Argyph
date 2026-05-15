@@ -21,6 +21,12 @@ version = "1.0.0-rc.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/Ezzy1630/argyph"
+homepage = "https://github.com/Ezzy1630/argyph"
+documentation = "https://docs.rs/argyph"
+readme = "README.md"
+description = "Local-first MCP server giving AI coding agents fast, structured, and semantic context over any codebase."
+keywords = ["mcp", "ai", "codebase", "semantic-search", "tree-sitter"]
+categories = ["development-tools", "command-line-utilities"]
 authors = ["Ezzy1630"]
 
 [workspace.dependencies]

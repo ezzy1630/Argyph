@@ -5,17 +5,23 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
+description.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [lints]
 workspace = true
 
 [dependencies]
-argyph-parse = { path = "../argyph-parse" }
+argyph-parse = { path = "../argyph-parse", version = "=1.0.0-rc.1" }
 camino = "1"
 thiserror.workspace = true
 
 [dev-dependencies]
-argyph-fs = { path = "../argyph-fs" }
+argyph-fs = { path = "../argyph-fs", version = "=1.0.0-rc.1" }
 
 [lib]
 name = "argyph_graph"
