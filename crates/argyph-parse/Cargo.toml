@@ -17,7 +17,7 @@ categories.workspace = true
 workspace = true
 
 [dependencies]
-argyph-fs = { path = "../argyph-fs", version = "=1.0.3" }
+argyph-fs = { path = "../argyph-fs", version = "=1.0.4" }
 blake3 = "1"
 camino = "1"
 tree-sitter = "0.26"

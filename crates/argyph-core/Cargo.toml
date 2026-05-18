@@ -17,12 +17,12 @@ categories.workspace = true
 workspace = true
 
 [dependencies]
-argyph-fs = { path = "../argyph-fs", version = "=1.0.3" }
-argyph-graph = { path = "../argyph-graph", version = "=1.0.3" }
-argyph-parse = { path = "../argyph-parse", version = "=1.0.3" }
-argyph-embed = { path = "../argyph-embed", version = "=1.0.3" }
-argyph-pack = { path = "../argyph-pack", version = "=1.0.3" }
-argyph-store = { path = "../argyph-store", version = "=1.0.3" }
+argyph-fs = { path = "../argyph-fs", version = "=1.0.4" }
+argyph-graph = { path = "../argyph-graph", version = "=1.0.4" }
+argyph-parse = { path = "../argyph-parse", version = "=1.0.4" }
+argyph-embed = { path = "../argyph-embed", version = "=1.0.4" }
+argyph-pack = { path = "../argyph-pack", version = "=1.0.4" }
+argyph-store = { path = "../argyph-store", version = "=1.0.4" }
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros", "time"] }
 tokio-util = { version = "0.7", features = ["rt"] }
 tracing = "0.1"

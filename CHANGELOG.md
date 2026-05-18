@@ -8,6 +8,16 @@ Entries marked **breaking** require a major version bump.
 
 ---
 
+## [1.0.4] — 2026-05-18
+
+### Fixed
+
+- `argyph-mcp` `resolve_path()`: `Utf8Path::join` uses the platform
+  separator, so resolved MCP paths were `\`-separated on Windows. The
+  function now normalizes to `/`, fixing
+  `validate::tests::valid_subpath_is_accepted` on `windows-latest` and
+  keeping MCP-returned paths consistent across platforms.
+
 ## [1.0.3] — 2026-05-18
 
 ### Fixed

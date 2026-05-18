@@ -17,9 +17,9 @@ categories.workspace = true
 workspace = true
 
 [dependencies]
-argyph-core = { path = "../argyph-core", version = "=1.0.3" }
-argyph-fs = { path = "../argyph-fs", version = "=1.0.3" }
-argyph-mcp = { path = "../argyph-mcp", version = "=1.0.3" }
+argyph-core = { path = "../argyph-core", version = "=1.0.4" }
+argyph-fs = { path = "../argyph-fs", version = "=1.0.4" }
+argyph-mcp = { path = "../argyph-mcp", version = "=1.0.4" }
 thiserror.workspace = true
 clap = { version = "4", features = ["derive"] }
 camino = "1"

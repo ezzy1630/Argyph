@@ -18,8 +18,12 @@ pub fn resolve_path(root: &Utf8Path, candidate: &str) -> Option<Utf8PathBuf> {
     } else {
         root.join(candidate)
     };
-    if resolved.as_str().starts_with(root.as_str()) {
-        Some(Utf8PathBuf::from(resolved.as_str()))
+    // `Utf8Path::join` uses the platform separator (`\` on Windows);
+    // normalize to `/` so resolved paths are stable across platforms.
+    let resolved = Utf8PathBuf::from(resolved.as_str().replace('\\', "/"));
+    let root_norm = root.as_str().replace('\\', "/");
+    if resolved.as_str().starts_with(&root_norm) {
+        Some(resolved)
     } else {
         None
     }

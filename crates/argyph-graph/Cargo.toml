@@ -17,12 +17,12 @@ categories.workspace = true
 workspace = true
 
 [dependencies]
-argyph-parse = { path = "../argyph-parse", version = "=1.0.3" }
+argyph-parse = { path = "../argyph-parse", version = "=1.0.4" }
 camino = "1"
 thiserror.workspace = true
 
 [dev-dependencies]
-argyph-fs = { path = "../argyph-fs", version = "=1.0.3" }
+argyph-fs = { path = "../argyph-fs", version = "=1.0.4" }
 
 [lib]
 name = "argyph_graph"

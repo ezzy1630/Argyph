@@ -1,6 +1,6 @@
 {
   "name": "argyph",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Local-first MCP server giving AI coding agents fast, structured, and semantic context over any codebase.",
   "bin": {
     "argyph": "bin/argyph.js"

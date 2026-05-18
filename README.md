@@ -50,7 +50,7 @@ Argyph runs entirely on the developer's machine: a single binary, an embedded ve
 
 ## ⬇ Install
 
-> Current release: **`v1.0.3`** — published on npm, crates.io, the Homebrew tap, and as prebuilt GitHub-release binaries.
+> Current release: **`v1.0.4`** — published on npm, crates.io, the Homebrew tap, and as prebuilt GitHub-release binaries.
 
 **Claude Code** (recommended):
 
