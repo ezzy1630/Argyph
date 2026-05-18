@@ -103,15 +103,25 @@ PRs are squash-merged. The final commit message is curated by the maintainer.
 
 ---
 
-## 7. Recipes
+## 7. Extension points
 
-Step-by-step recipes for common contributions are in `docs/`:
+Argyph's common extension points each live in one crate. Use the
+existing implementations next to the one you're adding as the template,
+and consult [`docs/MODULES.md`](docs/MODULES.md) and
+[`ARCHITECTURE.md`](ARCHITECTURE.md) for the surrounding contracts.
 
-- **Add a new MCP tool** — `docs/recipes/add-tool.md` (Phase 1+)
-- **Add a new language pack** — `docs/recipes/add-language.md` (Phase 2+)
-- **Add a new embedding provider** — `docs/recipes/add-embed-provider.md` (Phase 3+)
+- **Add a new MCP tool** — `crates/argyph-mcp`. Implement the tool
+  handler and register it in the tool list; mirror an existing tool of
+  the same tier.
+- **Add a new language pack** — `crates/argyph-parse` (tree-sitter
+  grammar, symbol/chunk queries) and the `Language` enum in
+  `crates/argyph-fs`. Copy an existing language end-to-end.
+- **Add a new embedding provider** — `crates/argyph-embed`. Implement
+  the provider trait alongside the `local`, `openai`, and `voyage`
+  providers.
 
-These recipes exist so contributions stay structurally consistent.
+Dedicated step-by-step recipe docs are planned; until they land, the
+existing implementations are the reference.
 
 ---
 
