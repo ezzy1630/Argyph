@@ -95,7 +95,7 @@ jobs:
           (Get-FileHash "$stage.zip" -Algorithm SHA256).Hash.ToLower() + "  $stage.zip" | Out-File -Encoding ascii "$stage.zip.sha256"
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: argyph-${{ matrix.target }}
           path: |
@@ -207,7 +207,7 @@ jobs:
         run: |
           cd dxt
           zip -r ../argyph.dxt manifest.json icon.png
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: argyph-dxt
           path: argyph.dxt
