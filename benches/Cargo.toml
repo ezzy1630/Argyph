@@ -27,7 +27,7 @@ path = "src/lib.rs"
 criterion.workspace = true
 tempfile = "3"
 walkdir = "2"
-tiktoken-rs = "0.6"
+tiktoken-rs = "0.11"
 
 [[bench]]
 name = "core"
