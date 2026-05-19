@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
+use std::hint::black_box;
 
 fn bench_walk_directory(c: &mut Criterion) {
     let root = camino::Utf8PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/.."));
