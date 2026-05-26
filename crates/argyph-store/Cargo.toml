@@ -21,7 +21,7 @@ thiserror.workspace = true
 argyph-fs = { path = "../argyph-fs", version = "=1.0.4" }
 argyph-parse = { path = "../argyph-parse", version = "=1.0.4" }
 argyph-graph = { path = "../argyph-graph", version = "=1.0.4" }
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
 async-trait = "0.1"
 camino = "1"
 serde_json = "1"
