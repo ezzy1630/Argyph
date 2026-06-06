@@ -3,6 +3,7 @@ use std::sync::Mutex;
 use std::time::SystemTime;
 
 use camino::{Utf8Path, Utf8PathBuf};
+use rusqlite::types::Type;
 use rusqlite::{params, Connection, OptionalExtension, Row};
 
 use argyph_fs::{Blake3Hash, FileEntry, Language};
@@ -394,14 +395,16 @@ impl Store for SqliteStore {
              FROM symbols WHERE file = ?1 ORDER BY name",
         )?;
         let rows = stmt.query_map(params![file.as_str()], |row| {
+            let range_start = sqlite_i64_to_u64(row.get(5)?, 5)?;
+            let range_end = sqlite_i64_to_u64(row.get(6)?, 6)?;
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, String>(2)?,
                 row.get::<_, Option<String>>(3)?,
                 row.get::<_, Option<String>>(4)?,
-                row.get::<_, u64>(5)?,
-                row.get::<_, u64>(6)?,
+                range_start,
+                range_end,
             ))
         })?;
 
@@ -1014,6 +1017,12 @@ fn symbol_kind_from_str(s: &str) -> Option<SymbolKind> {
         "static" => Some(SymbolKind::Static),
         _ => None,
     }
+}
+
+fn sqlite_i64_to_u64(value: i64, column: usize) -> rusqlite::Result<u64> {
+    u64::try_from(value).map_err(|err| {
+        rusqlite::Error::FromSqlConversionFailure(column, Type::Integer, Box::new(err))
+    })
 }
 
 fn row_to_symbol(row: &Row) -> rusqlite::Result<Symbol> {

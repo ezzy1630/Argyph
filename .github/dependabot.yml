@@ -8,6 +8,10 @@ updates:
       - "ezzy1630"
     labels:
       - "dependencies"
+    ignore:
+      - dependency-name: "rusqlite"
+        versions:
+          - ">= 0.40.0"
 
   - package-ecosystem: "github-actions"
     directory: "/"
