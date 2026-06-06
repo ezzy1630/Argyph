@@ -2,6 +2,12 @@
 
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
+use std::sync::{Mutex, MutexGuard, OnceLock};
+
+fn serve_test_lock() -> MutexGuard<'static, ()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(())).lock().unwrap()
+}
 
 fn copy_dir_all(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
     std::fs::create_dir_all(dst)?;
@@ -159,6 +165,7 @@ fn parse_tool_result(v: &serde_json::Value) -> serde_json::Value {
 
 #[test]
 fn locate_markdown_by_heading_path() {
+    let _guard = serve_test_lock();
     let fx = setup_fixture();
     let (mut child, mut stdout, mut stdin) = spawn_serve(&fx.root);
     handshake(&mut stdin, &mut stdout);
@@ -196,6 +203,7 @@ fn locate_markdown_by_heading_path() {
 
 #[test]
 fn locate_json_by_key_path() {
+    let _guard = serve_test_lock();
     let fx = setup_fixture();
     let (mut child, mut stdout, mut stdin) = spawn_serve(&fx.root);
     handshake(&mut stdin, &mut stdout);
@@ -230,6 +238,7 @@ fn locate_json_by_key_path() {
 
 #[test]
 fn locate_csv_row() {
+    let _guard = serve_test_lock();
     let fx = setup_fixture();
     let (mut child, mut stdout, mut stdin) = spawn_serve(&fx.root);
     handshake(&mut stdin, &mut stdout);
@@ -264,6 +273,7 @@ fn locate_csv_row() {
 
 #[test]
 fn locate_invalid_argument_when_no_query_or_path() {
+    let _guard = serve_test_lock();
     let fx = setup_fixture();
     let (mut child, mut stdout, mut stdin) = spawn_serve(&fx.root);
     handshake(&mut stdin, &mut stdout);
@@ -283,6 +293,7 @@ fn locate_invalid_argument_when_no_query_or_path() {
 
 #[test]
 fn locate_empty_match_returns_empty_not_error() {
+    let _guard = serve_test_lock();
     let fx = setup_fixture();
     let (mut child, mut stdout, mut stdin) = spawn_serve(&fx.root);
     handshake(&mut stdin, &mut stdout);
@@ -310,6 +321,7 @@ fn locate_empty_match_returns_empty_not_error() {
 
 #[test]
 fn locate_nl_query_returns_section() {
+    let _guard = serve_test_lock();
     let fx = setup_fixture();
     let (mut child, mut stdout, mut stdin) = spawn_serve(&fx.root);
     handshake(&mut stdin, &mut stdout);
