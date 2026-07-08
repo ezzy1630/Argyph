@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   update:
@@ -15,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -28,15 +29,12 @@ jobs:
       - name: Update badge JSON
         run: node scripts/update-download-badge.mjs
 
-      - name: Commit badge update
-        run: |
-          if git diff --quiet badges/downloads.json; then
-            echo "Download badge is already current."
-            exit 0
-          fi
-
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add badges/downloads.json
-          git commit -m "chore: update download badge"
-          git push
+      - name: Open badge update pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          add-paths: badges/downloads.json
+          branch: automation/download-badge
+          commit-message: 'chore: update download badge'
+          title: 'chore: update download badge'
+          body: 'Automated download badge refresh.'
+          delete-branch: true

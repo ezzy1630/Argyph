@@ -36,7 +36,7 @@ jobs:
             archive_ext: zip
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -108,7 +108,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           path: artifacts/
@@ -143,7 +143,7 @@ jobs:
     if: ${{ github.repository == 'Ezzy1630/argyph' }}
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - name: cargo publish (dependency order)
         env:
@@ -167,7 +167,7 @@ jobs:
     if: ${{ github.repository == 'Ezzy1630/argyph' }}
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: '20'
@@ -203,7 +203,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Package DXT
         run: |
           cd dxt
@@ -229,7 +229,7 @@ jobs:
     if: ${{ !contains(github.ref_name, '-') }}
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
       - name: Update SHAs in Formula/argyph.rb
