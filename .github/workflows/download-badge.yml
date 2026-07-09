@@ -30,7 +30,7 @@ jobs:
         run: node scripts/update-download-badge.mjs
 
       - name: Open badge update pull request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           add-paths: badges/downloads.json
           branch: automation/download-badge
